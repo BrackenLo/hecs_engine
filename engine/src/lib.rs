@@ -3,8 +3,8 @@
 use std::{marker::PhantomData, time::Duration};
 
 use common::Size;
-use hecs::World;
-use renderer::RendererState;
+use hecs::{Entity, World};
+use renderer::{camera::CameraUniform, RendererState};
 use tools::{Input, KeyCode, Time};
 use window::Window;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
@@ -53,6 +53,33 @@ pub struct State {
     renderer: RendererState,
     keys: Input<KeyCode>,
     time: Time,
+}
+
+pub struct RendererAccess<'a>(&'a mut State);
+impl<'a> RendererAccess<'a> {
+    #[inline]
+    pub fn add_renderer<R: renderer::Renderer>(&mut self, priority: usize) {
+        self.0
+            .renderer
+            .add_pipeline::<R>(&mut self.0.world, priority);
+    }
+
+    #[inline]
+    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(&mut self, camera: C) -> Entity {
+        self.0.renderer.spawn_camera(&mut self.0.world, camera)
+    }
+}
+
+impl State {
+    #[inline]
+    pub fn renderer<'a: 'b, 'b>(&'a mut self) -> RendererAccess<'b> {
+        RendererAccess(self)
+    }
+
+    #[inline]
+    pub fn keys(&self) -> &Input<KeyCode> {
+        &self.keys
+    }
 }
 
 //====================================================================

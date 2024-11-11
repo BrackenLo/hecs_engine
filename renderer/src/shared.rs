@@ -2,7 +2,10 @@
 
 use wgpu::util::DeviceExt;
 
-use crate::camera::{CameraUniform, CameraWgpu};
+use crate::{
+    camera::{CameraUniform, CameraWgpu},
+    WgpuWrapper,
+};
 
 use super::{texture::Texture, tools};
 
@@ -92,8 +95,8 @@ impl SharedRenderResources {
         });
 
         CameraWgpu {
-            camera_buffer,
-            camera_bind_group,
+            camera_buffer: WgpuWrapper::new(camera_buffer),
+            camera_bind_group: WgpuWrapper::new(camera_bind_group),
         }
     }
 }

@@ -2,6 +2,8 @@
 
 use hecs::World;
 
+use crate::WgpuWrapper;
+
 //====================================================================
 
 pub(crate) fn sys_prep_perspective_cameras(world: &mut World, queue: &wgpu::Queue) {
@@ -21,8 +23,8 @@ pub(crate) fn sys_prep_orthographic_cameras(world: &mut World, queue: &wgpu::Que
 //====================================================================
 
 pub struct CameraWgpu {
-    pub(crate) camera_buffer: wgpu::Buffer,
-    pub(crate) camera_bind_group: wgpu::BindGroup,
+    pub(crate) camera_buffer: WgpuWrapper<wgpu::Buffer>,
+    pub(crate) camera_bind_group: WgpuWrapper<wgpu::BindGroup>,
 }
 
 impl CameraWgpu {
@@ -30,7 +32,7 @@ impl CameraWgpu {
     pub fn update_camera<C: CameraUniform>(&self, queue: &wgpu::Queue, camera: &C) {
         queue
             .write_buffer_with(
-                &self.camera_buffer,
+                self.camera_buffer.inner(),
                 0,
                 wgpu::BufferSize::new(std::mem::size_of::<CameraUniformRaw>() as u64).unwrap(),
             )
@@ -40,7 +42,7 @@ impl CameraWgpu {
 
     #[inline]
     pub fn bind_group(&self) -> &wgpu::BindGroup {
-        &self.camera_bind_group
+        self.camera_bind_group.inner()
     }
 }
 
@@ -57,6 +59,7 @@ pub struct CameraUniformRaw {
     camera_position: glam::Vec3,
     _padding: u32,
 }
+
 impl CameraUniformRaw {
     pub fn new(view_projection: glam::Mat4, camera_position: glam::Vec3) -> Self {
         Self {
@@ -69,7 +72,7 @@ impl CameraUniformRaw {
 
 //--------------------------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OrthographicCamera {
     pub left: f32,
     pub right: f32,
@@ -161,7 +164,7 @@ impl OrthographicCamera {
 
 //--------------------------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PerspectiveCamera {
     pub up: glam::Vec3,
     pub aspect: f32,

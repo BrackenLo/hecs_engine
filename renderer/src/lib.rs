@@ -1,7 +1,8 @@
 //====================================================================
 
+use camera::CameraUniform;
 use common::Size;
-use hecs::World;
+use hecs::{Entity, World};
 use shared::SharedRenderResources;
 use texture::{LoadedTexture, Texture};
 use wgpu::SurfaceTarget;
@@ -87,11 +88,23 @@ impl RendererState {
         }
     }
 
-    pub fn add_pipeline<P: Renderer>(&mut self, world: &mut World, priority: usize) {
-        let pipeline = Box::new(P::new(&self.core, &self.shared_resources, world));
+    pub fn add_pipeline<R: Renderer>(&mut self, world: &mut World, priority: usize) {
+        let pipeline = Box::new(R::new(&self.core, &self.shared_resources, world));
 
         self.pipelines.push(RendererData { priority, pipeline });
         self.pipelines.sort_by_key(|val| val.priority);
+    }
+
+    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(
+        &mut self,
+        world: &mut World,
+        camera: C,
+    ) -> Entity {
+        let camera_wgpu = self
+            .shared_resources
+            .create_camera(&self.core.device, &camera);
+
+        world.spawn((camera, camera_wgpu))
     }
 
     pub fn resize(&mut self, new_size: Size<u32>) {
