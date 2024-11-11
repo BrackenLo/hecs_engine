@@ -1,10 +1,10 @@
 [package]
-name = "engine_template"
+name = "hecs_engine"
 version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["common", "engine", "game", "pipelines", "renderer"]
+members = ["common", "engine", "pipelines", "renderer"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -13,4 +13,7 @@ hecs = { version = "0.10.5", default-features = false }
 log = "0.4.22"
 
 [dependencies]
-game.path = "game"
+common.path = "common"
+engine.path = "engine"
+pipelines.path = "pipelines"
+renderer.path = "renderer"
