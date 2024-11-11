@@ -4,6 +4,7 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{CameraUniform, CameraWgpu},
+    text_shared::TextResources,
     WgpuWrapper,
 };
 
@@ -18,8 +19,10 @@ pub trait Vertex: bytemuck::Pod {
 //====================================================================
 
 pub struct SharedRenderResources {
-    pub texture_bind_group_layout: wgpu::BindGroupLayout,
-    pub camera_bind_group_layout: wgpu::BindGroupLayout,
+    texture_bind_group_layout: wgpu::BindGroupLayout,
+    camera_bind_group_layout: wgpu::BindGroupLayout,
+
+    text_resources: TextResources,
 }
 
 impl SharedRenderResources {
@@ -45,17 +48,39 @@ impl SharedRenderResources {
                 }],
             });
 
+        let text_resources = TextResources::new(device);
+
         Self {
             texture_bind_group_layout,
             camera_bind_group_layout,
+            text_resources,
         }
     }
+}
 
+impl SharedRenderResources {
     #[inline]
     pub fn texture_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
         &self.texture_bind_group_layout
     }
 
+    #[inline]
+    pub fn camera_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.camera_bind_group_layout
+    }
+
+    #[inline]
+    pub fn text_resources(&self) -> &TextResources {
+        &self.text_resources
+    }
+
+    #[inline]
+    pub fn text_resources_mut(&mut self) -> &mut TextResources {
+        &mut self.text_resources
+    }
+}
+
+impl SharedRenderResources {
     pub fn create_texture_bind_group(
         &self,
         device: &wgpu::Device,

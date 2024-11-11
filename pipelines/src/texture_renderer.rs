@@ -39,7 +39,7 @@ pub struct TextureRenderer {
 impl Renderer for TextureRenderer {
     fn new(
         core: &renderer::RendererCore,
-        shared: &renderer::shared::SharedRenderResources,
+        shared: &mut renderer::shared::SharedRenderResources,
         _world: &mut hecs::World,
     ) -> Self {
         let pipeline = tools::create_pipeline(
@@ -47,7 +47,7 @@ impl Renderer for TextureRenderer {
             core.config(),
             "Texture Pipeline",
             &[
-                &shared.camera_bind_group_layout,
+                shared.camera_bind_group_layout(),
                 shared.texture_bind_group_layout(),
             ],
             &[TextureRectVertex::desc(), InstanceTexture::desc()],
@@ -88,7 +88,12 @@ impl Renderer for TextureRenderer {
         }
     }
 
-    fn prep(&mut self, core: &renderer::RendererCore, world: &mut hecs::World) {
+    fn prep(
+        &mut self,
+        core: &renderer::RendererCore,
+        _shared: &mut renderer::shared::SharedRenderResources,
+        world: &mut hecs::World,
+    ) {
         let mut previous = self.instances.keys().map(|id| *id).collect::<HashSet<_>>();
         let mut textures_to_add = HashMap::new();
 
@@ -136,7 +141,12 @@ impl Renderer for TextureRenderer {
         });
     }
 
-    fn render(&mut self, pass: &mut wgpu::RenderPass, world: &mut hecs::World) {
+    fn render(
+        &mut self,
+        pass: &mut wgpu::RenderPass,
+        _shared: &mut renderer::shared::SharedRenderResources,
+        world: &mut hecs::World,
+    ) {
         let camera = match world
             .query_mut::<(&PerspectiveCamera, &CameraWgpu)>()
             .into_iter()

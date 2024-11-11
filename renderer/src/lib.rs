@@ -1,5 +1,7 @@
 //====================================================================
 
+use std::sync::Arc;
+
 use camera::CameraUniform;
 use common::Size;
 use hecs::{Entity, World};
@@ -9,6 +11,7 @@ use wgpu::SurfaceTarget;
 
 pub mod camera;
 pub mod shared;
+pub mod text_shared;
 pub mod texture;
 pub mod tools;
 
@@ -45,8 +48,8 @@ pub struct RendererState {
     depth_texture: Texture,
 
     shared_resources: SharedRenderResources,
-    default_texture: LoadedTexture,
-    clear_color: wgpu::Color,
+    pub default_texture: Arc<LoadedTexture>,
+    pub clear_color: wgpu::Color,
 
     pipelines: Vec<RendererData>,
 }
@@ -59,7 +62,7 @@ impl RendererState {
 
         let shared_resources = SharedRenderResources::new(&core.device);
 
-        let default_texture = LoadedTexture::load_texture(
+        let default_texture = Arc::new(LoadedTexture::load_texture(
             &core.device,
             &shared_resources,
             Texture::from_color(
@@ -69,7 +72,7 @@ impl RendererState {
                 Some("Default Texture"),
                 None,
             ),
-        );
+        ));
 
         let clear_color = wgpu::Color {
             r: 0.2,
@@ -89,7 +92,7 @@ impl RendererState {
     }
 
     pub fn add_pipeline<R: Renderer>(&mut self, world: &mut World, priority: usize) {
-        let pipeline = Box::new(R::new(&self.core, &self.shared_resources, world));
+        let pipeline = Box::new(R::new(&self.core, &mut self.shared_resources, world));
 
         self.pipelines.push(RendererData { priority, pipeline });
         self.pipelines.sort_by_key(|val| val.priority);
@@ -123,9 +126,11 @@ impl RendererState {
         camera::sys_prep_orthographic_cameras(world, &self.core.queue);
 
         // Prep pipelines
-        self.pipelines
-            .iter_mut()
-            .for_each(|pipeline_data| pipeline_data.pipeline.prep(&self.core, world));
+        self.pipelines.iter_mut().for_each(|pipeline_data| {
+            pipeline_data
+                .pipeline
+                .prep(&self.core, &mut self.shared_resources, world)
+        });
 
         // Get and check surface
         let (surface_texture, surface_view) = match self.core.surface.get_current_texture() {
@@ -173,9 +178,11 @@ impl RendererState {
         });
 
         // Render all pipelines
-        self.pipelines
-            .iter_mut()
-            .for_each(|pipeline_data| pipeline_data.pipeline.render(&mut render_pass, world));
+        self.pipelines.iter_mut().for_each(|pipeline_data| {
+            pipeline_data
+                .pipeline
+                .render(&mut render_pass, &mut self.shared_resources, world)
+        });
 
         std::mem::drop(render_pass);
 
@@ -292,15 +299,20 @@ struct RendererData {
 }
 
 pub trait Renderer: 'static {
-    fn new(core: &RendererCore, shared: &SharedRenderResources, world: &mut World) -> Self
+    fn new(core: &RendererCore, shared: &mut SharedRenderResources, world: &mut World) -> Self
     where
         Self: Sized;
 
-    fn prep(&mut self, core: &RendererCore, world: &mut World);
+    fn prep(&mut self, core: &RendererCore, shared: &mut SharedRenderResources, world: &mut World);
     fn resize(&mut self, core: &RendererCore) {
         let _ = core;
     }
-    fn render(&mut self, render_pass: &mut wgpu::RenderPass, world: &mut World);
+    fn render(
+        &mut self,
+        render_pass: &mut wgpu::RenderPass,
+        shared: &mut SharedRenderResources,
+        world: &mut World,
+    );
 }
 
 //====================================================================

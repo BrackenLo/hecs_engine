@@ -1,10 +1,10 @@
 //====================================================================
 
-use std::{marker::PhantomData, time::Duration};
+use std::{marker::PhantomData, sync::Arc, time::Duration};
 
 use common::Size;
 use hecs::{Entity, World};
-use renderer::{camera::CameraUniform, RendererState};
+use renderer::{camera::CameraUniform, texture::LoadedTexture, RendererState};
 use tools::{Input, KeyCode, Time};
 use window::Window;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
@@ -67,6 +67,11 @@ impl<'a> RendererAccess<'a> {
     #[inline]
     pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(&mut self, camera: C) -> Entity {
         self.0.renderer.spawn_camera(&mut self.0.world, camera)
+    }
+
+    #[inline]
+    pub fn clone_default_texture(&self) -> Arc<LoadedTexture> {
+        self.0.renderer.default_texture.clone()
     }
 }
 
