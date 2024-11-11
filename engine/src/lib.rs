@@ -4,7 +4,7 @@ use std::{marker::PhantomData, time::Duration};
 
 use common::Size;
 use hecs::World;
-use renderer::Renderer;
+use renderer::RendererState;
 use tools::{Input, KeyCode, Time};
 use window::Window;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
@@ -50,7 +50,7 @@ pub struct State {
     world: World,
     window: Window,
     target_fps: Duration,
-    renderer: Renderer,
+    renderer: RendererState,
     keys: Input<KeyCode>,
     time: Time,
 }
@@ -65,7 +65,7 @@ struct OuterState {
 impl OuterState {
     pub(crate) fn new<A: App>(event_loop: &ActiveEventLoop) -> Self {
         let window = Window::new(event_loop);
-        let renderer = Renderer::new(window.0.clone(), window.size());
+        let renderer = RendererState::new(window.0.clone(), window.size());
 
         let mut state = State {
             world: World::new(),

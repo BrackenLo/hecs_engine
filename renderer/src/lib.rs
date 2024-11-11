@@ -39,27 +39,28 @@ impl<T> WgpuWrapper<T> {
 
 //====================================================================
 
-pub struct Renderer {
+pub struct RendererState {
     core: RendererCore,
     depth_texture: Texture,
 
+    shared_resources: SharedRenderResources,
     default_texture: LoadedTexture,
     clear_color: wgpu::Color,
 
-    pipelines: Vec<PipelineData>,
+    pipelines: Vec<RendererData>,
 }
 
-impl Renderer {
+impl RendererState {
     pub fn new(window: impl Into<SurfaceTarget<'static>>, window_size: Size<u32>) -> Self {
         let core = pollster::block_on(RendererCore::new(window, window_size));
         let depth_texture =
             Texture::create_depth_texture(&core.device, window_size, "Depth Texture");
 
-        let shared = SharedRenderResources::new(&core.device);
+        let shared_resources = SharedRenderResources::new(&core.device);
 
         let default_texture = LoadedTexture::load_texture(
             &core.device,
-            &shared,
+            &shared_resources,
             Texture::from_color(
                 &core.device,
                 &core.queue,
@@ -79,16 +80,17 @@ impl Renderer {
         Self {
             core,
             depth_texture,
+            shared_resources,
             default_texture,
             clear_color,
             pipelines: Vec::new(),
         }
     }
 
-    pub fn add_pipeline<P: Pipeline>(&mut self, world: &mut World, priority: usize) {
-        let pipeline = Box::new(P::new(&self.core, world));
+    pub fn add_pipeline<P: Renderer>(&mut self, world: &mut World, priority: usize) {
+        let pipeline = Box::new(P::new(&self.core, &self.shared_resources, world));
 
-        self.pipelines.push(PipelineData { priority, pipeline });
+        self.pipelines.push(RendererData { priority, pipeline });
         self.pipelines.sort_by_key(|val| val.priority);
     }
 
@@ -173,10 +175,27 @@ impl Renderer {
 //====================================================================
 
 pub struct RendererCore {
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-    pub surface: wgpu::Surface<'static>,
-    pub config: wgpu::SurfaceConfiguration,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    surface: wgpu::Surface<'static>,
+    config: wgpu::SurfaceConfiguration,
+}
+
+impl RendererCore {
+    #[inline]
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    #[inline]
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
+    }
+
+    #[inline]
+    pub fn config(&self) -> &wgpu::SurfaceConfiguration {
+        &self.config
+    }
 }
 
 impl RendererCore {
@@ -254,13 +273,13 @@ impl RendererCore {
 
 //====================================================================
 
-struct PipelineData {
+struct RendererData {
     priority: usize,
-    pipeline: Box<dyn Pipeline>,
+    pipeline: Box<dyn Renderer>,
 }
 
-pub trait Pipeline: 'static {
-    fn new(core: &RendererCore, world: &mut World) -> Self
+pub trait Renderer: 'static {
+    fn new(core: &RendererCore, shared: &SharedRenderResources, world: &mut World) -> Self
     where
         Self: Sized;
 

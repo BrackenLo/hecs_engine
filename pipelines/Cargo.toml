@@ -1,0 +1,13 @@
+[package]
+name = "pipelines"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytemuck = { version = "1.19.0", features = ["derive"] }
+common.path = "../common"
+glam = { workspace = true, features = ["bytemuck"] }
+hecs.workspace = true
+log.workspace = true
+renderer.path = "../renderer"
+wgpu = "23.0.0"

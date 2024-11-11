@@ -1,5 +1,9 @@
 //====================================================================
 
+use wgpu::util::DeviceExt;
+
+use crate::camera::{CameraUniform, CameraWgpu};
+
 use super::{texture::Texture, tools};
 
 //====================================================================
@@ -12,6 +16,7 @@ pub trait Vertex: bytemuck::Pod {
 
 pub struct SharedRenderResources {
     pub texture_bind_group_layout: wgpu::BindGroupLayout,
+    pub camera_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl SharedRenderResources {
@@ -22,8 +27,24 @@ impl SharedRenderResources {
                 entries: &[tools::bgl_texture_entry(0), tools::bgl_sampler_entry(1)],
             });
 
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Camera Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
         Self {
             texture_bind_group_layout,
+            camera_bind_group_layout,
         }
     }
 
@@ -32,7 +53,7 @@ impl SharedRenderResources {
         &self.texture_bind_group_layout
     }
 
-    pub fn create_bind_group(
+    pub fn create_texture_bind_group(
         &self,
         device: &wgpu::Device,
         texture: &Texture,
@@ -52,6 +73,28 @@ impl SharedRenderResources {
                 },
             ],
         })
+    }
+
+    pub fn create_camera<C: CameraUniform>(&self, device: &wgpu::Device, camera: &C) -> CameraWgpu {
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera buffer"),
+            contents: bytemuck::cast_slice(&[camera.into_uniform()]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Camera Bind Group"),
+            layout: &self.camera_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(camera_buffer.as_entire_buffer_binding()),
+            }],
+        });
+
+        CameraWgpu {
+            camera_buffer,
+            camera_bind_group,
+        }
     }
 }
 

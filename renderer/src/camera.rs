@@ -1,44 +1,8 @@
 //====================================================================
 
 use hecs::World;
-use wgpu::util::DeviceExt;
 
 //====================================================================
-
-// pub struct Camera {
-//     pub camera: PerspectiveCamera,
-//     pub data: CameraData,
-// }
-
-// impl Camera {
-//     #[inline]
-//     pub fn new(device: &wgpu::Device, camera: PerspectiveCamera) -> Self {
-//         Self {
-//             data: CameraData::new(device, &camera),
-//             camera,
-//         }
-//     }
-
-//     #[inline]
-//     pub fn update_camera(&self, queue: &wgpu::Queue) {
-//         self.data.update_camera(queue, &self.camera);
-//     }
-
-//     #[inline]
-//     pub fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
-//         self.data.bind_group_layout()
-//     }
-
-//     #[inline]
-//     pub fn bind_group(&self) -> &wgpu::BindGroup {
-//         self.data.bind_group()
-//     }
-
-//     #[inline]
-//     pub fn set_aspect(&mut self, width: f32, height: f32) {
-//         self.camera.aspect = width / height;
-//     }
-// }
 
 pub(crate) fn sys_prep_perspective_cameras(world: &mut World, queue: &wgpu::Queue) {
     world
@@ -57,50 +21,11 @@ pub(crate) fn sys_prep_orthographic_cameras(world: &mut World, queue: &wgpu::Que
 //====================================================================
 
 pub struct CameraWgpu {
-    camera_buffer: wgpu::Buffer,
-    camera_bind_group_layout: wgpu::BindGroupLayout,
-    camera_bind_group: wgpu::BindGroup,
+    pub(crate) camera_buffer: wgpu::Buffer,
+    pub(crate) camera_bind_group: wgpu::BindGroup,
 }
 
 impl CameraWgpu {
-    pub fn new<C: CameraUniform>(device: &wgpu::Device, camera: &C) -> Self {
-        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera buffer"),
-            contents: bytemuck::cast_slice(&[camera.into_uniform()]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let camera_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Camera Bind Group Layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
-
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Camera Bind Group"),
-            layout: &camera_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(camera_buffer.as_entire_buffer_binding()),
-            }],
-        });
-
-        Self {
-            camera_buffer,
-            camera_bind_group_layout,
-            camera_bind_group,
-        }
-    }
-
     #[inline]
     pub fn update_camera<C: CameraUniform>(&self, queue: &wgpu::Queue, camera: &C) {
         queue
@@ -111,11 +36,6 @@ impl CameraWgpu {
             )
             .unwrap()
             .copy_from_slice(bytemuck::cast_slice(&[camera.into_uniform()]));
-    }
-
-    #[inline]
-    pub fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
-        &self.camera_bind_group_layout
     }
 
     #[inline]

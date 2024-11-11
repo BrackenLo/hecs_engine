@@ -25,7 +25,7 @@ impl LoadedTexture {
         texture: Texture,
     ) -> Self {
         let id = CURRENT_TEXTURE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let bind_group = shared.create_bind_group(device, &texture, None);
+        let bind_group = shared.create_texture_bind_group(device, &texture, None);
         Self {
             id,
             texture: WgpuWrapper::new(texture),
