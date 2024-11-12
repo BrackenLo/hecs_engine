@@ -164,8 +164,12 @@ impl Renderer for Ui3dRenderer {
         shared: &mut renderer::shared::SharedRenderResources,
         world: &mut hecs::World,
     ) {
-        let camera_pos = match world.query::<&PerspectiveCamera>().into_iter().next() {
-            Some((_, camera)) => camera.translation,
+        let camera_pos = match world
+            .query::<(&PerspectiveCamera, &Transform)>()
+            .into_iter()
+            .next()
+        {
+            Some((_, (_, transform))) => transform.translation,
             None => return,
         };
 

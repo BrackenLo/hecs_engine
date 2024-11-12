@@ -28,10 +28,10 @@ impl<T> From<(T, T)> for Size<T> {
     }
 }
 
-impl<T> Into<(T, T)> for Size<T> {
+impl<T> From<Size<T>> for (T, T) {
     #[inline]
-    fn into(self) -> (T, T) {
-        (self.width, self.height)
+    fn from(value: Size<T>) -> Self {
+        (value.width, value.height)
     }
 }
 
@@ -166,12 +166,12 @@ impl Transform {
 
     #[inline]
     pub fn forward(&self) -> glam::Vec3 {
-        self.rotation * glam::Vec3::Z
+        (self.rotation * glam::Vec3::Z).normalize_or_zero()
     }
 
     #[inline]
     pub fn right(&self) -> glam::Vec3 {
-        self.rotation * glam::Vec3::X
+        (self.rotation * glam::Vec3::X).normalize_or_zero()
     }
 
     pub fn lerp(&mut self, target: &Transform, s: f32) {
@@ -212,7 +212,32 @@ impl Into<glam::Mat4> for &Transform {
 impl std::ops::Add for Transform {
     type Output = Self;
 
-    fn add(mut self, rhs: Transform) -> Self::Output {
+    #[inline]
+    fn add(self, rhs: Transform) -> Self::Output {
+        self + &rhs
+    }
+}
+
+impl std::ops::AddAssign for Transform {
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        self.add_assign(&rhs);
+    }
+}
+
+impl std::ops::Sub for Transform {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, rhs: Self) -> Self::Output {
+        self - &rhs
+    }
+}
+
+impl std::ops::Add<&Self> for Transform {
+    type Output = Self;
+
+    fn add(mut self, rhs: &Self) -> Self::Output {
         self.translation += rhs.translation;
         self.rotation = self.rotation.mul_quat(rhs.rotation);
         self.scale *= rhs.scale;
@@ -220,18 +245,18 @@ impl std::ops::Add for Transform {
     }
 }
 
-impl std::ops::AddAssign for Transform {
-    fn add_assign(&mut self, rhs: Self) {
+impl std::ops::AddAssign<&Self> for Transform {
+    fn add_assign(&mut self, rhs: &Self) {
         self.translation += rhs.translation;
         self.rotation = self.rotation.mul_quat(rhs.rotation);
         self.scale *= rhs.scale;
     }
 }
 
-impl std::ops::Sub for Transform {
+impl std::ops::Sub<&Self> for Transform {
     type Output = Self;
 
-    fn sub(mut self, rhs: Self) -> Self::Output {
+    fn sub(mut self, rhs: &Self) -> Self::Output {
         self.translation -= rhs.translation;
         self.rotation = self.rotation.mul_quat(rhs.rotation.inverse());
         self.scale /= rhs.scale;

@@ -1,10 +1,13 @@
 //====================================================================
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     hash::{BuildHasherDefault, Hash},
+    ops::Deref,
 };
 
+use common::Transform;
+use hecs::{Entity, World};
 use rustc_hash::FxHasher;
 use web_time::{Duration, Instant};
 
@@ -120,6 +123,87 @@ where
 pub fn reset_input<T>(input: &mut Input<T>) {
     input.just_pressed.clear();
     input.released.clear();
+}
+
+//====================================================================
+
+#[derive(Debug)]
+pub struct LocalTransform {
+    pub parent: Entity,
+    pub transform: Transform,
+}
+
+pub(crate) fn process_transform_hierarchy(state: &mut crate::State) {
+    #[derive(Default)]
+    struct Hierarchy {
+        entries: HashSet<Entity>,
+        links: HashMap<Entity, Vec<Entity>>,
+    }
+
+    let hierarchy = state
+        .world
+        .query_mut::<(&Transform, &LocalTransform)>()
+        .into_iter()
+        .fold(Hierarchy::default(), |mut acc, (entity, (_, local))| {
+            acc.entries.insert(entity);
+
+            acc.links
+                .entry(local.parent)
+                .or_insert(Vec::new())
+                .push(entity);
+
+            acc
+        });
+
+    let roots = hierarchy
+        .links
+        .keys()
+        .filter(|val| !hierarchy.entries.contains(val))
+        .collect::<Vec<_>>();
+
+    roots.into_iter().for_each(|root| {
+        let root_transform = state
+            .world
+            .get::<&Transform>(*root)
+            .unwrap()
+            .deref()
+            .clone();
+
+        hierarchy
+            .links
+            .get(root)
+            .unwrap()
+            .into_iter()
+            .for_each(|child| {
+                cascade_transform(
+                    &mut state.world,
+                    &hierarchy.links,
+                    *child,
+                    root_transform.clone(),
+                )
+            });
+    });
+}
+
+fn cascade_transform(
+    world: &mut World,
+    links: &HashMap<Entity, Vec<Entity>>,
+    current: Entity,
+    mut transform: Transform,
+) {
+    if let Ok(local) = world.get::<&LocalTransform>(current) {
+        transform += &local.transform;
+    }
+
+    if let Ok(mut entity_transform) = world.get::<&mut Transform>(current) {
+        *entity_transform = transform.clone();
+    }
+
+    if let Some(child_links) = links.get(&current) {
+        child_links
+            .into_iter()
+            .for_each(|child| cascade_transform(world, links, *child, transform.clone()))
+    }
 }
 
 //====================================================================

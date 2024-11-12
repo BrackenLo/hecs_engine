@@ -1,5 +1,6 @@
 //====================================================================
 
+use common::Transform;
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -106,7 +107,7 @@ impl SharedRenderResources {
     pub fn create_camera<C: CameraUniform>(&self, device: &wgpu::Device, camera: &C) -> CameraWgpu {
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera buffer"),
-            contents: bytemuck::cast_slice(&[camera.into_uniform()]),
+            contents: bytemuck::cast_slice(&[camera.get_camera_uniform(&Transform::default())]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 

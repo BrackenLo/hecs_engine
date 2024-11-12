@@ -58,10 +58,11 @@ pub struct State {
 pub struct RendererAccess<'a>(&'a mut State);
 impl<'a> RendererAccess<'a> {
     #[inline]
-    pub fn add_renderer<R: renderer::Renderer>(&mut self, priority: usize) {
+    pub fn add_renderer<R: renderer::Renderer>(&mut self, priority: usize) -> &mut Self {
         self.0
             .renderer
             .add_pipeline::<R>(&mut self.0.world, priority);
+        self
     }
 
     #[inline]
@@ -84,6 +85,21 @@ impl State {
     #[inline]
     pub fn keys(&self) -> &Input<KeyCode> {
         &self.keys
+    }
+
+    #[inline]
+    pub fn time(&self) -> &Time {
+        &self.time
+    }
+
+    #[inline]
+    pub fn world(&self) -> &World {
+        &self.world
+    }
+
+    #[inline]
+    pub fn world_mut(&mut self) -> &mut World {
+        &mut self.world
     }
 }
 
@@ -182,6 +198,9 @@ impl OuterState {
         tools::tick_time(&mut self.state.time);
 
         self.app.update(&mut self.state);
+
+        tools::process_transform_hierarchy(&mut self.state);
+
         self.state.renderer.tick(&mut self.state.world);
 
         tools::reset_input(&mut self.state.keys);
