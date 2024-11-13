@@ -44,6 +44,18 @@ impl<T: Display> Display for Size<T> {
 
 //====================================================================
 
+#[derive(Default, Debug)]
+pub struct GlobalTransform(pub glam::Affine3A);
+
+impl GlobalTransform {
+    #[inline]
+    pub fn to_matrix(&self) -> glam::Mat4 {
+        self.0.into()
+    }
+}
+
+//--------------------------------------------------
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transform {
     pub translation: glam::Vec3,
@@ -160,8 +172,8 @@ impl Transform {
     }
 
     #[inline]
-    pub fn look_at(&mut self, target: glam::Vec3, up: glam::Vec3) {
-        self.look_to(target - self.translation, up);
+    pub fn look_at(&mut self, target: impl Into<glam::Vec3>, up: impl Into<glam::Vec3>) {
+        self.look_to(target.into() - self.translation, up.into());
     }
 
     #[inline]
@@ -185,6 +197,11 @@ impl Transform {
     #[inline]
     pub fn to_matrix(&self) -> glam::Mat4 {
         glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    }
+
+    #[inline]
+    pub fn to_affine(&self) -> glam::Affine3A {
+        glam::Affine3A::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
 
     #[inline]

@@ -1,13 +1,10 @@
 //====================================================================
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     hash::{BuildHasherDefault, Hash},
-    ops::Deref,
 };
 
-use common::Transform;
-use hecs::{Entity, World};
 use rustc_hash::FxHasher;
 use web_time::{Duration, Instant};
 
@@ -64,7 +61,7 @@ pub fn tick_time(time: &mut Time) {
 
 //====================================================================
 
-pub use winit::keyboard::KeyCode;
+pub use winit::{event::MouseButton, keyboard::KeyCode};
 
 #[derive(Debug)]
 pub struct Input<T> {
@@ -104,7 +101,7 @@ where
     }
 }
 
-pub fn process_inputs<T>(input: &mut Input<T>, val: T, pressed: bool)
+pub(crate) fn process_inputs<T>(input: &mut Input<T>, val: T, pressed: bool)
 where
     T: Eq + Hash + Copy,
 {
@@ -120,90 +117,56 @@ where
     }
 }
 
-pub fn reset_input<T>(input: &mut Input<T>) {
+pub(crate) fn reset_input<T>(input: &mut Input<T>) {
     input.just_pressed.clear();
     input.released.clear();
 }
 
-//====================================================================
+//--------------------------------------------------
 
-#[derive(Debug)]
-pub struct LocalTransform {
-    pub parent: Entity,
-    pub transform: Transform,
+#[derive(Debug, Default)]
+pub struct MouseInput {
+    position: glam::Vec2,
+    screen_position: glam::Vec2,
+    motion_delta: glam::Vec2,
+    scroll: glam::Vec2,
 }
 
-pub(crate) fn process_transform_hierarchy(state: &mut crate::State) {
-    #[derive(Default)]
-    struct Hierarchy {
-        entries: HashSet<Entity>,
-        links: HashMap<Entity, Vec<Entity>>,
+impl MouseInput {
+    #[inline]
+    pub fn position(&self) -> glam::Vec2 {
+        self.position
     }
 
-    let hierarchy = state
-        .world
-        .query_mut::<(&Transform, &LocalTransform)>()
-        .into_iter()
-        .fold(Hierarchy::default(), |mut acc, (entity, (_, local))| {
-            acc.entries.insert(entity);
+    #[inline]
+    pub fn screen_position(&self) -> glam::Vec2 {
+        self.screen_position
+    }
 
-            acc.links
-                .entry(local.parent)
-                .or_insert(Vec::new())
-                .push(entity);
+    #[inline]
+    pub fn motion_delta(&self) -> glam::Vec2 {
+        self.motion_delta
+    }
 
-            acc
-        });
-
-    let roots = hierarchy
-        .links
-        .keys()
-        .filter(|val| !hierarchy.entries.contains(val))
-        .collect::<Vec<_>>();
-
-    roots.into_iter().for_each(|root| {
-        let root_transform = state
-            .world
-            .get::<&Transform>(*root)
-            .unwrap()
-            .deref()
-            .clone();
-
-        hierarchy
-            .links
-            .get(root)
-            .unwrap()
-            .into_iter()
-            .for_each(|child| {
-                cascade_transform(
-                    &mut state.world,
-                    &hierarchy.links,
-                    *child,
-                    root_transform.clone(),
-                )
-            });
-    });
+    #[inline]
+    pub fn scroll(&self) -> glam::Vec2 {
+        self.scroll
+    }
 }
 
-fn cascade_transform(
-    world: &mut World,
-    links: &HashMap<Entity, Vec<Entity>>,
-    current: Entity,
-    mut transform: Transform,
-) {
-    if let Ok(local) = world.get::<&LocalTransform>(current) {
-        transform += &local.transform;
-    }
+#[inline]
+pub(crate) fn process_mouse_position(input: &mut MouseInput, position: (f64, f64)) {
+    input.position = glam::vec2(position.0 as f32, position.1 as f32);
+}
 
-    if let Ok(mut entity_transform) = world.get::<&mut Transform>(current) {
-        *entity_transform = transform.clone();
-    }
+#[inline]
+pub(crate) fn process_mouse_motion(input: &mut MouseInput, delta: (f64, f64)) {
+    input.motion_delta += glam::vec2(delta.0 as f32, delta.1 as f32);
+}
 
-    if let Some(child_links) = links.get(&current) {
-        child_links
-            .into_iter()
-            .for_each(|child| cascade_transform(world, links, *child, transform.clone()))
-    }
+pub(crate) fn reset_mouse_input(input: &mut MouseInput) {
+    input.motion_delta = glam::Vec2::ZERO;
+    input.scroll = glam::Vec2::ZERO;
 }
 
 //====================================================================

@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use common::Transform;
+use common::GlobalTransform;
 use renderer::{
     camera::{CameraWgpu, PerspectiveCamera},
     shared::{
@@ -97,9 +97,10 @@ impl Renderer for TextureRenderer {
         let mut previous = self.instances.keys().map(|id| *id).collect::<HashSet<_>>();
         let mut textures_to_add = HashMap::new();
 
-        let instances = world.query_mut::<(&Transform, &Sprite)>().into_iter().fold(
-            HashMap::new(),
-            |mut acc, (_, (transform, sprite))| {
+        let instances = world
+            .query_mut::<(&GlobalTransform, &Sprite)>()
+            .into_iter()
+            .fold(HashMap::new(), |mut acc, (_, (transform, sprite))| {
                 let instance = InstanceTexture {
                     size: sprite.size,
                     pad: [0.; 2],
@@ -115,8 +116,7 @@ impl Renderer for TextureRenderer {
                     .push(instance);
 
                 acc
-            },
-        );
+            });
 
         instances.into_iter().for_each(|(id, raw)| {
             previous.remove(&id);

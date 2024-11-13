@@ -1,6 +1,6 @@
 //====================================================================
 
-use common::Transform;
+use common::GlobalTransform;
 use hecs::World;
 
 use crate::WgpuWrapper;
@@ -9,19 +9,19 @@ use crate::WgpuWrapper;
 
 pub(crate) fn sys_prep_perspective_cameras(world: &mut World, queue: &wgpu::Queue) {
     world
-        .query_mut::<(&CameraWgpu, &PerspectiveCamera, &Transform)>()
+        .query_mut::<(&CameraWgpu, &PerspectiveCamera, &GlobalTransform)>()
         .into_iter()
         .for_each(|(_, (camera, perspective, transform))| {
-            camera.update_camera(queue, perspective, transform)
+            camera.update_camera(queue, perspective, &transform.0)
         });
 }
 
 pub(crate) fn sys_prep_orthographic_cameras(world: &mut World, queue: &wgpu::Queue) {
     world
-        .query_mut::<(&CameraWgpu, &OrthographicCamera, &Transform)>()
+        .query_mut::<(&CameraWgpu, &OrthographicCamera, &GlobalTransform)>()
         .into_iter()
         .for_each(|(_, (camera, orthographic, transform))| {
-            camera.update_camera(queue, orthographic, transform)
+            camera.update_camera(queue, orthographic, &transform.0)
         });
 }
 
@@ -38,7 +38,7 @@ impl CameraWgpu {
         &self,
         queue: &wgpu::Queue,
         camera: &C,
-        transform: &Transform,
+        transform: &glam::Affine3A,
     ) {
         queue
             .write_buffer_with(
@@ -62,13 +62,13 @@ impl CameraWgpu {
 
 pub trait CameraUniform {
     fn get_projection_matrix(&self) -> glam::Mat4;
-    fn get_view_matrix(&self, transform: &Transform) -> glam::Mat4;
+    fn get_view_matrix(&self, transform: &glam::Affine3A) -> glam::Mat4;
 
     #[inline]
-    fn get_camera_uniform(&self, transform: &Transform) -> CameraUniformRaw {
+    fn get_camera_uniform(&self, transform: &glam::Affine3A) -> CameraUniformRaw {
         CameraUniformRaw::new(
             self.get_projection_matrix() * self.get_view_matrix(transform),
-            transform.translation,
+            transform.translation.into(),
         )
     }
 }
@@ -127,8 +127,10 @@ impl CameraUniform for OrthographicCamera {
     }
 
     #[inline]
-    fn get_view_matrix(&self, transform: &Transform) -> glam::Mat4 {
-        glam::Mat4::from_rotation_translation(transform.rotation, -transform.translation)
+    fn get_view_matrix(&self, transform: &glam::Affine3A) -> glam::Mat4 {
+        let (_, rotation, translation) = transform.to_scale_rotation_translation();
+
+        glam::Mat4::from_rotation_translation(rotation, translation)
     }
 }
 
@@ -216,14 +218,13 @@ impl CameraUniform for PerspectiveCamera {
         // CameraUniformRaw::new(self.get_projection(), self.translation.into())
     }
 
-    fn get_view_matrix(&self, transform: &Transform) -> glam::Mat4 {
-        let forward = transform.forward();
+    fn get_view_matrix(&self, transform: &glam::Affine3A) -> glam::Mat4 {
+        // let forward = transform.forward();
 
-        glam::Mat4::look_at_lh(
-            transform.translation,
-            transform.translation + forward,
-            self.up,
-        )
+        let forward = (transform.matrix3 * glam::Vec3::Z).normalize_or_zero();
+        let translation = transform.translation.into();
+
+        glam::Mat4::look_at_lh(translation, translation + forward, self.up)
     }
 }
 

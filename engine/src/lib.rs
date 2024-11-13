@@ -5,11 +5,12 @@ use std::{marker::PhantomData, sync::Arc, time::Duration};
 use common::Size;
 use hecs::{Entity, World};
 use renderer::{camera::CameraUniform, texture::LoadedTexture, RendererState};
-use tools::{Input, KeyCode, Time};
+use tools::{Input, KeyCode, MouseButton, MouseInput, Time};
 use window::Window;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 
 mod runner;
+pub mod spatial;
 pub mod tools;
 pub mod window;
 
@@ -52,6 +53,8 @@ pub struct State {
     target_fps: Duration,
     renderer: RendererState,
     keys: Input<KeyCode>,
+    mouse_buttons: Input<MouseButton>,
+    mouse_input: MouseInput,
     time: Time,
 }
 
@@ -78,6 +81,21 @@ impl<'a> RendererAccess<'a> {
 
 impl State {
     #[inline]
+    pub fn world(&self) -> &World {
+        &self.world
+    }
+
+    #[inline]
+    pub fn world_mut(&mut self) -> &mut World {
+        &mut self.world
+    }
+
+    #[inline]
+    pub fn window(&self) -> &Window {
+        &self.window
+    }
+
+    #[inline]
     pub fn renderer<'a: 'b, 'b>(&'a mut self) -> RendererAccess<'b> {
         RendererAccess(self)
     }
@@ -88,18 +106,18 @@ impl State {
     }
 
     #[inline]
+    pub fn mouse_buttons(&self) -> &Input<MouseButton> {
+        &self.mouse_buttons
+    }
+
+    #[inline]
+    pub fn mouse_input(&self) -> &MouseInput {
+        &self.mouse_input
+    }
+
+    #[inline]
     pub fn time(&self) -> &Time {
         &self.time
-    }
-
-    #[inline]
-    pub fn world(&self) -> &World {
-        &self.world
-    }
-
-    #[inline]
-    pub fn world_mut(&mut self) -> &mut World {
-        &mut self.world
     }
 }
 
@@ -121,6 +139,8 @@ impl OuterState {
             target_fps: Duration::from_secs_f32(1. / 75.),
             renderer,
             keys: Input::default(),
+            mouse_buttons: Input::default(),
+            mouse_input: MouseInput::default(),
             time: Time::default(),
         };
 
@@ -164,10 +184,20 @@ impl OuterState {
 
             WindowEvent::KeyboardInput { event, .. } => {
                 if let winit::keyboard::PhysicalKey::Code(key) = event.physical_key {
-                    tools::process_inputs(&mut self.state.keys, key, event.state.is_pressed())
+                    tools::process_inputs(&mut self.state.keys, key, event.state.is_pressed());
                 }
             }
 
+            WindowEvent::MouseInput { state, button, .. } => {
+                tools::process_inputs(&mut self.state.mouse_buttons, button, state.is_pressed());
+            }
+
+            WindowEvent::CursorMoved { position, .. } => {
+                tools::process_mouse_position(&mut self.state.mouse_input, position.into());
+            }
+
+            // WindowEvent::MouseWheel { delta, .. } => {}
+            //
             WindowEvent::RedrawRequested => {
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::wait_duration(
                     self.state.target_fps,
@@ -182,11 +212,16 @@ impl OuterState {
 
     pub fn device_event(
         &mut self,
-        event_loop: &ActiveEventLoop,
-        device_id: winit::event::DeviceId,
+        _event_loop: &ActiveEventLoop,
+        _device_id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
-        let _ = (event_loop, device_id, event);
+        match event {
+            winit::event::DeviceEvent::MouseMotion { delta } => {
+                tools::process_mouse_motion(&mut self.state.mouse_input, delta);
+            }
+            _ => {}
+        }
     }
 
     #[inline]
@@ -199,11 +234,14 @@ impl OuterState {
 
         self.app.update(&mut self.state);
 
-        tools::process_transform_hierarchy(&mut self.state);
+        spatial::process_global_transform(&mut self.state);
+        spatial::process_transform_hierarchy(&mut self.state);
 
         self.state.renderer.tick(&mut self.state.world);
 
         tools::reset_input(&mut self.state.keys);
+        tools::reset_input(&mut self.state.mouse_buttons);
+        tools::reset_mouse_input(&mut self.state.mouse_input);
     }
 }
 

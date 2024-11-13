@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use common::Transform;
+use common::{GlobalTransform, Transform};
 use hecs::Entity;
 use renderer::{
     camera::{CameraWgpu, PerspectiveCamera},
@@ -165,11 +165,11 @@ impl Renderer for Ui3dRenderer {
         world: &mut hecs::World,
     ) {
         let camera_pos = match world
-            .query::<(&PerspectiveCamera, &Transform)>()
+            .query::<(&PerspectiveCamera, &GlobalTransform)>()
             .into_iter()
             .next()
         {
-            Some((_, (_, transform))) => transform.translation,
+            Some((_, (_, transform))) => transform.0.translation,
             None => return,
         };
 
@@ -181,11 +181,15 @@ impl Renderer for Ui3dRenderer {
 
         let mut previous = self.instances.keys().map(|id| *id).collect::<HashSet<_>>();
 
+        // Prep all ui
         world
-            .query_mut::<(&Ui3d, &Transform)>()
+            .query_mut::<(&Ui3d, &GlobalTransform)>()
             .into_iter()
             .for_each(|(entity, (ui, transform))| {
                 previous.remove(&entity);
+
+                //--------------------------------------------------
+                // Insert new text data
 
                 if !self.instances.contains_key(&entity) {
                     self.insert_ui(core.device(), shared.text_resources_mut(), entity, ui)
@@ -197,6 +201,7 @@ impl Renderer for Ui3dRenderer {
                 };
 
                 //--------------------------------------------------
+                // Build Text
 
                 if let Some(rebuild) = renderer::text_shared::prep(
                     core.device(),
@@ -216,6 +221,7 @@ impl Renderer for Ui3dRenderer {
                 }
 
                 //--------------------------------------------------
+                // Build Transform
 
                 let position_raw = UiPositionUniformRaw {
                     transform: transform.to_matrix(),
@@ -230,6 +236,9 @@ impl Renderer for Ui3dRenderer {
                     )
                     .unwrap()
                     .copy_from_slice(bytemuck::cast_slice(&[position_raw]));
+
+                //--------------------------------------------------
+                // Build UI background
 
                 let longest_line = ui.options.iter().reduce(|a, b| match a.len() < b.len() {
                     true => a,
@@ -280,6 +289,7 @@ impl Renderer for Ui3dRenderer {
                     .copy_from_slice(bytemuck::cast_slice(&[ui_raw]));
             });
 
+        // Remove unused text data
         previous.into_iter().for_each(|to_remove| {
             self.instances.remove(&to_remove);
         });
