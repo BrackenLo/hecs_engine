@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use common::{GlobalTransform, Transform};
+use common::GlobalTransform;
 use hecs::Entity;
 use renderer::{
     camera::{CameraWgpu, PerspectiveCamera},
@@ -164,20 +164,27 @@ impl Renderer for Ui3dRenderer {
         shared: &mut renderer::shared::SharedRenderResources,
         world: &mut hecs::World,
     ) {
-        let camera_pos = match world
+        //--------------------------------------------------
+
+        let camera_pos: glam::Vec3 = match world
             .query::<(&PerspectiveCamera, &GlobalTransform)>()
             .into_iter()
             .next()
         {
-            Some((_, (_, transform))) => transform.0.translation,
+            Some((_, (_, transform))) => transform.translation(),
             None => return,
         };
 
-        // All ui look at camera
+        // Force all ui to look at camera
         world
-            .query::<(&mut Transform, &Ui3d)>()
+            .query::<(&mut GlobalTransform, &Ui3d)>()
             .iter()
-            .for_each(|(_, (transform, _))| transform.look_at(camera_pos, glam::Vec3::Y));
+            .for_each(|(_, (transform, _))| {
+                transform.0 =
+                    glam::Affine3A::look_at_lh(transform.translation(), camera_pos, glam::Vec3::Y)
+            });
+
+        //--------------------------------------------------
 
         let mut previous = self.instances.keys().map(|id| *id).collect::<HashSet<_>>();
 

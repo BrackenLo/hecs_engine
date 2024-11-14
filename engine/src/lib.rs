@@ -3,7 +3,7 @@
 use std::{marker::PhantomData, sync::Arc, time::Duration};
 
 use common::Size;
-use hecs::{Entity, World};
+use hecs::World;
 use renderer::{camera::CameraUniform, texture::LoadedTexture, RendererState};
 use tools::{Input, KeyCode, MouseButton, MouseInput, Time};
 use window::Window;
@@ -69,8 +69,12 @@ impl<'a> RendererAccess<'a> {
     }
 
     #[inline]
-    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(&mut self, camera: C) -> Entity {
-        self.0.renderer.spawn_camera(&mut self.0.world, camera)
+    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(
+        &self,
+        builder: &mut hecs::EntityBuilder,
+        camera: C,
+    ) {
+        self.0.renderer.spawn_camera(builder, camera)
     }
 
     #[inline]
@@ -196,7 +200,17 @@ impl OuterState {
                 tools::process_mouse_position(&mut self.state.mouse_input, position.into());
             }
 
-            // WindowEvent::MouseWheel { delta, .. } => {}
+            WindowEvent::MouseWheel { delta, .. } => match delta {
+                winit::event::MouseScrollDelta::LineDelta(x, y) => {
+                    tools::process_mouse_scroll(&mut self.state.mouse_input, (x, y))
+                }
+                winit::event::MouseScrollDelta::PixelDelta(physical_position) => {
+                    tools::process_mouse_scroll(
+                        &mut self.state.mouse_input,
+                        (physical_position.x as f32, physical_position.y as f32),
+                    )
+                }
+            },
             //
             WindowEvent::RedrawRequested => {
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::wait_duration(

@@ -52,6 +52,16 @@ impl GlobalTransform {
     pub fn to_matrix(&self) -> glam::Mat4 {
         self.0.into()
     }
+
+    #[inline]
+    pub fn translation(&self) -> glam::Vec3 {
+        self.0.translation.into()
+    }
+
+    #[inline]
+    pub fn to_scale_rotation_translation(&self) -> (glam::Vec3, glam::Quat, glam::Vec3) {
+        self.0.to_scale_rotation_translation()
+    }
 }
 
 //--------------------------------------------------
@@ -186,6 +196,7 @@ impl Transform {
         (self.rotation * glam::Vec3::X).normalize_or_zero()
     }
 
+    #[inline]
     pub fn lerp(&mut self, target: &Transform, s: f32) {
         self.translation = self.translation.lerp(target.translation, s);
         self.rotation = self.rotation.lerp(target.rotation, s);

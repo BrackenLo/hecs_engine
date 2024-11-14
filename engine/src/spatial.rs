@@ -53,7 +53,14 @@ pub(crate) fn process_transform_hierarchy(state: &mut crate::State) {
     roots.into_iter().for_each(|root| {
         let root_transform = match state.world.get::<&GlobalTransform>(*root) {
             Ok(transform) => transform.0,
-            Err(_) => return,
+            Err(_) => {
+                log::warn!(
+                    "Entity '{:?}' is a root transform for '{:?}' but is missing a GlobalTransform component.",
+                    root, 
+                    hierarchy.links.get(root)
+                );
+                glam::Affine3A::IDENTITY
+            }
         };
 
         hierarchy
@@ -62,60 +69,15 @@ pub(crate) fn process_transform_hierarchy(state: &mut crate::State) {
             .unwrap()
             .into_iter()
             .for_each(|child| {
-                cascade_transform_x(&mut state.world, &hierarchy.links, *child, root_transform);
+                cascade_transform(&mut state.world, &hierarchy.links, *child, root_transform);
             });
-
-        // let root_transform = state
-        //     .world
-        //     .get::<&Transform>(*root)
-        //     .unwrap()
-        //     .deref()
-        //     .clone();
-
-        // hierarchy
-        //     .links
-        //     .get(root)
-        //     .unwrap()
-        //     .into_iter()
-        //     .for_each(|child| {
-        //         cascade_transform(
-        //             &mut state.world,
-        //             &hierarchy.links,
-        //             *child,
-        //             root_transform.clone(),
-        //         )
-        //     });
     });
 }
 
-// fn cascade_transform(
-//     world: &mut World,
-//     links: &HashMap<Entity, Vec<Entity>>,
-//     current: Entity,
-//     mut transform: Transform,
-// ) {
-//     if let Ok(local) = world.get::<&LocalTransform>(current) {
-//         transform += &local.transform;
-//     }
-
-//     if let Ok(mut entity_transform) = world.get::<&mut Transform>(current) {
-//         *entity_transform = transform.clone();
-
-//         // println!("{:?} transform = {:?}", current, entity_transform);
-//     }
-
-//     if let Some(child_links) = links.get(&current) {
-//         child_links
-//             .into_iter()
-//             .for_each(|child| cascade_transform(world, links, *child, transform.clone()))
-//     }
-// }
-
-fn cascade_transform_x(
+fn cascade_transform(
     world: &mut World,
     links: &HashMap<Entity, Vec<Entity>>,
     current: Entity,
-    // mut transform: glam::Mat4,
     mut transform: glam::Affine3A,
 ) {
     if let Ok(local) = world.get::<&LocalTransform>(current) {
@@ -129,7 +91,7 @@ fn cascade_transform_x(
     if let Some(child_links) = links.get(&current) {
         child_links
             .into_iter()
-            .for_each(|child| cascade_transform_x(world, links, *child, transform))
+            .for_each(|child| cascade_transform(world, links, *child, transform))
     }
 }
 

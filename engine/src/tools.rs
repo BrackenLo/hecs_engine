@@ -164,6 +164,11 @@ pub(crate) fn process_mouse_motion(input: &mut MouseInput, delta: (f64, f64)) {
     input.motion_delta += glam::vec2(delta.0 as f32, delta.1 as f32);
 }
 
+#[inline]
+pub(crate) fn process_mouse_scroll(input: &mut MouseInput, delta: (f32, f32)) {
+    input.scroll += glam::vec2(delta.0, delta.1);
+}
+
 pub(crate) fn reset_mouse_input(input: &mut MouseInput) {
     input.motion_delta = glam::Vec2::ZERO;
     input.scroll = glam::Vec2::ZERO;

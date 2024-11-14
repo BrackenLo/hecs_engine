@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use camera::CameraUniform;
 use common::Size;
-use hecs::{Entity, World};
+use hecs::World;
 use shared::SharedRenderResources;
 use texture::{LoadedTexture, Texture};
 use wgpu::SurfaceTarget;
@@ -99,15 +99,15 @@ impl RendererState {
     }
 
     pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(
-        &mut self,
-        world: &mut World,
+        &self,
+        builder: &mut hecs::EntityBuilder,
         camera: C,
-    ) -> Entity {
+    ) {
         let camera_wgpu = self
             .shared_resources
             .create_camera(&self.core.device, &camera);
 
-        world.spawn((camera, camera_wgpu))
+        builder.add(camera).add(camera_wgpu);
     }
 
     pub fn resize(&mut self, new_size: Size<u32>) {

@@ -20,7 +20,7 @@ use renderer::{
 
 pub struct Sprite {
     pub texture: Arc<LoadedTexture>,
-    pub size: glam::Vec2,
+    pub half_size: glam::Vec2,
     pub color: [f32; 4],
 }
 
@@ -102,7 +102,7 @@ impl Renderer for TextureRenderer {
             .into_iter()
             .fold(HashMap::new(), |mut acc, (_, (transform, sprite))| {
                 let instance = InstanceTexture {
-                    size: sprite.size,
+                    size: sprite.half_size,
                     pad: [0.; 2],
                     transform: transform.to_matrix(),
                     color: sprite.color.into(),

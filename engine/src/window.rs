@@ -38,6 +38,11 @@ impl Window {
     }
 
     #[inline]
+    pub fn hide_cursor(&self, hidden: bool) {
+        self.0.set_cursor_visible(!hidden);
+    }
+
+    #[inline]
     pub fn inner(&self) -> &winit::window::Window {
         &self.0
     }
