@@ -9,11 +9,13 @@ use crate::{shared::SharedRenderResources, WgpuWrapper};
 
 //====================================================================
 
+pub type TextureId = u32;
+
 static CURRENT_TEXTURE_ID: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Debug)]
 pub struct LoadedTexture {
-    id: u32,
+    id: TextureId,
     texture: WgpuWrapper<Texture>,
     bind_group: WgpuWrapper<wgpu::BindGroup>,
 }
@@ -34,7 +36,7 @@ impl LoadedTexture {
     }
 
     #[inline]
-    pub fn id(&self) -> u32 {
+    pub fn id(&self) -> TextureId {
         self.id
     }
 

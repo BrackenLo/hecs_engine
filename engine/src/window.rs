@@ -10,6 +10,8 @@ use winit::{event_loop::ActiveEventLoop, window::WindowAttributes};
 pub struct Window(pub(crate) Arc<winit::window::Window>);
 impl Window {
     pub(super) fn new(event_loop: &ActiveEventLoop) -> Self {
+        log::info!("Creating new window");
+
         let window = event_loop
             .create_window(WindowAttributes::default())
             .unwrap();
@@ -29,6 +31,8 @@ impl Window {
 
     #[inline]
     pub fn confine_cursor(&self, confined: bool) {
+        log::trace!("Confining window cursor: {}", confined);
+
         self.0
             .set_cursor_grab(match confined {
                 true => winit::window::CursorGrabMode::Confined,
@@ -39,6 +43,7 @@ impl Window {
 
     #[inline]
     pub fn hide_cursor(&self, hidden: bool) {
+        log::trace!("Hiding window cursor: {}", hidden);
         self.0.set_cursor_visible(!hidden);
     }
 

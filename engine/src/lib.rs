@@ -58,31 +58,6 @@ pub struct State {
     time: Time,
 }
 
-pub struct RendererAccess<'a>(&'a mut State);
-impl<'a> RendererAccess<'a> {
-    #[inline]
-    pub fn add_renderer<R: renderer::Renderer>(&mut self, priority: usize) -> &mut Self {
-        self.0
-            .renderer
-            .add_pipeline::<R>(&mut self.0.world, priority);
-        self
-    }
-
-    #[inline]
-    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(
-        &self,
-        builder: &mut hecs::EntityBuilder,
-        camera: C,
-    ) {
-        self.0.renderer.spawn_camera(builder, camera)
-    }
-
-    #[inline]
-    pub fn clone_default_texture(&self) -> Arc<LoadedTexture> {
-        self.0.renderer.default_texture.clone()
-    }
-}
-
 impl State {
     #[inline]
     pub fn world(&self) -> &World {
@@ -100,7 +75,12 @@ impl State {
     }
 
     #[inline]
-    pub fn renderer<'a: 'b, 'b>(&'a mut self) -> RendererAccess<'b> {
+    pub fn renderer_mut<'a: 'b, 'b>(&'a mut self) -> RendererAccessMut<'b> {
+        RendererAccessMut(self)
+    }
+
+    #[inline]
+    pub fn renderer<'a: 'b, 'b>(&'a self) -> RendererAccess<'b> {
         RendererAccess(self)
     }
 
@@ -122,6 +102,38 @@ impl State {
     #[inline]
     pub fn time(&self) -> &Time {
         &self.time
+    }
+}
+
+pub struct RendererAccessMut<'a>(&'a mut State);
+impl<'a> RendererAccessMut<'a> {
+    #[inline]
+    pub fn add_renderer<R: renderer::Renderer>(&mut self, priority: usize) -> &mut Self {
+        self.0
+            .renderer
+            .add_pipeline::<R>(&mut self.0.world, priority);
+        self
+    }
+}
+
+pub struct RendererAccess<'a>(&'a State);
+impl<'a> RendererAccess<'a> {
+    #[inline]
+    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(
+        &self,
+        builder: &mut hecs::EntityBuilder,
+        camera: C,
+    ) {
+        self.0.renderer.spawn_camera(builder, camera)
+    }
+
+    #[inline]
+    pub fn clone_default_texture(&self) -> Arc<LoadedTexture> {
+        self.0.renderer.default_texture.clone()
+    }
+
+    pub fn core(&self) -> &renderer::RendererCore {
+        &self.0.renderer.core()
     }
 }
 

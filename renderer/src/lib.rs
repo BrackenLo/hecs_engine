@@ -27,7 +27,7 @@ pub struct WgpuWrapper<T>(send_wrapper::SendWrapper<T>);
 
 impl<T> WgpuWrapper<T> {
     #[inline]
-    fn new(data: T) -> Self {
+    pub fn new(data: T) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         return Self(data);
 
@@ -89,25 +89,6 @@ impl RendererState {
             clear_color,
             pipelines: Vec::new(),
         }
-    }
-
-    pub fn add_pipeline<R: Renderer>(&mut self, world: &mut World, priority: usize) {
-        let pipeline = Box::new(R::new(&self.core, &mut self.shared_resources, world));
-
-        self.pipelines.push(RendererData { priority, pipeline });
-        self.pipelines.sort_by_key(|val| val.priority);
-    }
-
-    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(
-        &self,
-        builder: &mut hecs::EntityBuilder,
-        camera: C,
-    ) {
-        let camera_wgpu = self
-            .shared_resources
-            .create_camera(&self.core.device, &camera);
-
-        builder.add(camera).add(camera_wgpu);
     }
 
     pub fn resize(&mut self, new_size: Size<u32>) {
@@ -189,6 +170,32 @@ impl RendererState {
         // Finish and submit
         self.core.queue.submit(Some(encoder.finish()));
         surface_texture.present();
+    }
+}
+
+impl RendererState {
+    pub fn add_pipeline<R: Renderer>(&mut self, world: &mut World, priority: usize) {
+        let pipeline = Box::new(R::new(&self.core, &mut self.shared_resources, world));
+
+        self.pipelines.push(RendererData { priority, pipeline });
+        self.pipelines.sort_by_key(|val| val.priority);
+    }
+
+    pub fn spawn_camera<C: CameraUniform + 'static + Send + Sync>(
+        &self,
+        builder: &mut hecs::EntityBuilder,
+        camera: C,
+    ) {
+        let camera_wgpu = self
+            .shared_resources
+            .create_camera(&self.core.device, &camera);
+
+        builder.add(camera).add(camera_wgpu);
+    }
+
+    #[inline]
+    pub fn core(&self) -> &RendererCore {
+        &self.core
     }
 }
 

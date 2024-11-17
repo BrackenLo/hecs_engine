@@ -12,7 +12,7 @@ use renderer::{
         TextureRectVertex, Vertex, TEXTURE_RECT_INDEX_COUNT, TEXTURE_RECT_INDICES,
         TEXTURE_RECT_VERTICES,
     },
-    texture::LoadedTexture,
+    texture::{LoadedTexture, TextureId},
     tools, Renderer,
 };
 
@@ -20,7 +20,7 @@ use renderer::{
 
 pub struct Sprite {
     pub texture: Arc<LoadedTexture>,
-    pub half_size: glam::Vec2,
+    pub size: glam::Vec2,
     pub color: [f32; 4],
 }
 
@@ -33,7 +33,7 @@ pub struct TextureRenderer {
     index_buffer: wgpu::Buffer,
     index_count: u32,
 
-    instances: HashMap<u32, TextureInstanceBuffer>,
+    instances: HashMap<TextureId, TextureInstanceBuffer>,
 }
 
 impl Renderer for TextureRenderer {
@@ -102,7 +102,7 @@ impl Renderer for TextureRenderer {
             .into_iter()
             .fold(HashMap::new(), |mut acc, (_, (transform, sprite))| {
                 let instance = InstanceTexture {
-                    size: sprite.half_size,
+                    size: sprite.size,
                     pad: [0.; 2],
                     transform: transform.to_matrix(),
                     color: sprite.color.into(),
@@ -110,7 +110,10 @@ impl Renderer for TextureRenderer {
 
                 acc.entry(sprite.texture.id())
                     .or_insert_with(|| {
-                        textures_to_add.insert(sprite.texture.id(), sprite.texture.clone());
+                        if !self.instances.contains_key(&sprite.texture.id()) {
+                            textures_to_add.insert(sprite.texture.id(), sprite.texture.clone());
+                        }
+
                         Vec::new()
                     })
                     .push(instance);
