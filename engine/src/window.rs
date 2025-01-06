@@ -16,6 +16,29 @@ impl Window {
             .create_window(WindowAttributes::default())
             .unwrap();
 
+        #[cfg(target_arch = "wasm32")]
+        {
+            use winit::{dpi::PhysicalSize, platform::web::WindowExtWebSys};
+
+            log::info!("Adding canvas to window");
+
+            if let None = window.request_inner_size(PhysicalSize::new(450, 400)) {
+                log::warn!(
+                    "Wasm Window Resize Warning: Got none when requesting window inner size"
+                );
+            }
+
+            web_sys::window()
+                .and_then(|win| win.document())
+                .and_then(|doc| {
+                    let dst = doc.get_element_by_id("hecs_engine_wasm")?;
+                    let canvas = web_sys::Element::from(window.canvas()?);
+                    dst.append_child(&canvas).ok()?;
+                    Some(())
+                })
+                .expect("Couldn't append canvas to document body.");
+        }
+
         Self(Arc::new(window))
     }
 
@@ -29,6 +52,7 @@ impl Window {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn confine_cursor(&self, confined: bool) {
         log::trace!("Confining window cursor: {}", confined);
@@ -39,6 +63,12 @@ impl Window {
                 false => winit::window::CursorGrabMode::None,
             })
             .unwrap();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[inline]
+    pub fn confine_cursor(&self, _confined: bool) {
+        log::trace!("Confining window cursor not supported");
     }
 
     #[inline]

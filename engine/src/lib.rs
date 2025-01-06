@@ -147,7 +147,12 @@ struct OuterState {
 impl OuterState {
     pub(crate) fn new<A: App>(event_loop: &ActiveEventLoop) -> Self {
         let window = Window::new(event_loop);
-        let renderer = RendererState::new(window.0.clone(), window.size());
+        #[cfg(not(target_arch = "wasm32"))]
+        let window_size = window.size();
+        #[cfg(target_arch = "wasm32")]
+        let window_size = Size::new(450, 400);
+
+        let renderer = RendererState::new(window.0.clone(), window_size);
 
         let mut state = State {
             world: World::new(),
